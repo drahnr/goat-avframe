@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 VERSION = '0.0.1'
-APPNAME = 'goatplot'
+APPNAME = 'goatvideo'
 
 top = '.'
 out = 'build'
@@ -29,6 +29,7 @@ def configure(ctx):
 	ctx.check_cc(lib='m', uselib_store='M', mandatory=True)
 
 	ctx.check_cfg(atleast_pkgconfig_version='0.26')
+	ctx.check_cfg(package='cairo', uselib_store='GLIB', args=['--cflags', '--libs'], mandatory=True)
 	ctx.check_cfg(package='glib-2.0', uselib_store='GLIB', args=['glib-2.0 >= 2.24', '--cflags', '--libs'], mandatory=True)
 	ctx.check_cfg(package='gobject-2.0', uselib_store='GOBJECT', args=['--cflags', '--libs'], mandatory=True)
 	ctx.check_cfg(package='gtk+-3.0', uselib_store='GTK3', args=['--cflags', '--libs'], mandatory=True)
@@ -74,17 +75,18 @@ def build(bld):
 		install_path = "${LIBDIR}"
 	)
 
-	for item in shlib.includes:
-		logs.debug(item)
-	test = bld.program(
-		features = ['c', 'glib2', 'unites'],
-		target = 'test-simple',
-		source = ['tests/test.c'],
-		includes = ['src/'],
-		export_includes = ['src/'],
-		use = APPNAME,
-		uselib = 'M GOBJECT GLIB GTK3'
-	)
+	if False:
+		for item in shlib.includes:
+			logs.debug(item)
+		test = bld.program(
+			features = ['c', 'glib2', 'unites'],
+			target = 'test-simple',
+			source = ['tests/test.c'],
+			includes = ['src/'],
+			export_includes = ['src/'],
+			use = APPNAME,
+			uselib = 'M GOBJECT GLIB GTK3'
+		)
 
 
 from waflib.Build import BuildContext

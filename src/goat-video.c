@@ -1,54 +1,64 @@
-#include "goat-audio-video-frame.h"
+#include "goat-video.h"
+
+#include  <cairo.h>
 
 
-typedef struct _GoatAudioVideoFramePrivate
+
+
+gboolean
+draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data);
+
+
+typedef struct _GoatVideoPrivate
 {
 	GMutex cond_mutex;
 	GCond cond;
 	guint timer;
 	gpointer ringbuffer;
-	cairo_surface_t next_frame_surf;
-} GoatAudioVideoFramePrivate;
+	cairo_surface_t *next_frame_surf;
+	gboolean eof;
+	gboolean game_over;
+} GoatVideoPrivate;
 
 
-G_DEFINE_TYPE_WITH_PRIVATE (GoatAudioVideoFrame, goat_audio_video_frame, GTK_TYPE_DRAWING_AREA)
+G_DEFINE_TYPE_WITH_PRIVATE (GoatVideo, goat_video, GTK_TYPE_DRAWING_AREA)
 
 	
 static void
-goat_audio_video_frame_finalize (GObject *object)
+goat_video_finalize (GObject *object)
 {
-	G_OBJECT_CLASS (goat_audio_video_frame_parent_class)->finalize (object);
+	G_OBJECT_CLASS (goat_video_parent_class)->finalize (object);
 }
 
 
 static void
-goat_audio_video_frame_class_init (GoatAudioVideoFrameClass *klass)
+goat_video_class_init (GoatVideoClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	object_class->finalize = goat_audio_video_frame_finalize;
+	object_class->finalize = goat_video_finalize;
 }
 
 
 static void
-goat_audio_video_frame_init (GoatAudioVideoFrame *self)
+goat_video_init (GoatVideo *self)
 {
-	gtk_widget_set_size_request (drawing_area, 100, 100);
+	gtk_widget_set_size_request (GTK_WIDGET (self), 100, 100);
 	g_signal_connect (G_OBJECT (self), "draw", G_CALLBACK (draw_callback), NULL);
 	
 	//FIXME ringbuffer would be nicer
-	GoatAudioVideoFramePrivate *priv = GOAT_AUDIO_VIDEO_FRAME_GET_PRIVATE (self);
+	GoatVideoPrivate *priv = GOAT_VIDEO_GET_PRIVATE (self);
 	
 	g_mutex_init (&priv->cond_mutex);
 	g_cond_init (&priv->cond);
 	priv->next_frame_surf = NULL;
 	priv->timer = 0;
-	priv->ringbuffer = ...; //TODO
+	priv->ringbuffer = NULL; //TODO
 }
 
 
-GoatAudioVideoFrame *
-goat_audio_video_frame_new ()
+GoatVideo *
+goat_video_new ()
 {
 	return g_object_new (GOAT_TYPE_AUDIO_VIDEO_FRAME, NULL);
 }
@@ -80,7 +90,8 @@ timer_callback (GSource *source, gpointer data)
 gboolean
 realize_callback (GtkWidget *widget, gpointer data)
 {
-	
+	//FIXME
+	return TRUE;
 }
 
 
@@ -94,7 +105,7 @@ draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data)
 	height = gtk_widget_get_allocated_height (widget);
 	
 	if (priv->next_frame_surf!=NULL) {
-		cairo_set_source_surface (cr, priv->next_frame_surf);
+		cairo_set_source_surface (cr, priv->next_frame_surf, 0, 0);
 	} else {
 		cairo_arc (cr,
 				 width / 2.0, height / 2.0,
@@ -114,12 +125,12 @@ draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data)
 }
 
 
-
 /**
  * virtual func
  */
 cairo_surface_t *
-goat_decode_single_frame (GoatAudioVideoFrame *self) {
+goat_decode_single_frame (GoatVideo *self) {
+	g_error ("You need to overwrite the goat_decode_frame virtual function/func ptr!");
 	return NULL; //FIXME TODO
 }
 
@@ -130,11 +141,11 @@ goat_decode_single_frame (GoatAudioVideoFrame *self) {
 gpointer
 decoder_thread (gpointer user_data)
 {
-	GoatAudioVideoFrame *self = user_data;
-	GoatAudioVideoFramePrivate *priv = GOAT_AUDIO_VIDEO_FRAME_GET_PRIVATE (self);
+	GoatVideo *self = user_data;
+	GoatVideoPrivate *priv = GOAT_VIDEO_GET_PRIVATE (self);
 
 	while (priv->game_over==TRUE || priv->eof==TRUE) {
-		while (goat_ring_buffer_is_full (ringbuffer)==TRUE || ring_buffer_length (priv->ringbuffer) > 120)
+		while (goat_ring_buffer_is_full (ringbuffer)==TRUE || ring_buffer_length (priv->ringbuffer) > 120) {
 			g_mutex_lock (&priv->cond_mutex);
 			g_cond_wait (&priv->cond, &priv->cond_mutex);
 			g_mutex_unlock (&priv->cond_mutex);
@@ -149,7 +160,7 @@ decoder_thread (gpointer user_data)
 
 
 gboolean
-goat_audio_video_frame_pause ()
+goat_video_pause ()
 {
 	if (priv->timer!=0) {
 		g_source_remove_by_id (priv->timer);
@@ -157,11 +168,13 @@ goat_audio_video_frame_pause ()
 	}
 }
 
+
 gboolean
-goat_audio_video_frame_unpause ()
+goat_video_unpause ()
 {
 	if (priv->timer == 0) {
-		priv->timer = g_timeout_add ((GSourceFunc)timer_callback);
+		guint timeout_s = 1; //FIXME
+		priv->timer = g_timeout_add (timeout_s, (GSourceFunc)timer_callback);
 	}
 }
 
