@@ -1,5 +1,7 @@
 # Hacktonic
 
+[![Join the chat at https://gitter.im/drahnr/goatvideo](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/drahnr/goatvideo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Well this is just a wild hack inspired by a SO question regarding displaying ffmpeg video with gtk+-3.0
 
 ### Status
